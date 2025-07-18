@@ -10,12 +10,8 @@ class AppleManager:
     def extract_track_id(self):
         parsed_url = urlparse(self.url)
         query_params = parse_qs(parsed_url.query)
-
-        if "i" in query_params :
-            self.track_id = query_params["i"][0]
-        else:
-            print("Not a valid Apple Music URL")
-            return False 
+        self.track_id = query_params.get("i", [None])[0]
+        return self.track_id is not None
         
     def get_itunes_url(self):
         if not self.track_id:

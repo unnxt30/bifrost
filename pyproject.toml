@@ -9,3 +9,14 @@ dependencies = [
     "dotenv>=0.9.9",
     "httpx>=0.28.1",
 ]
+
+[project.scripts]
+bifrost = "src.cli.runner:bifrost"
+
+[tool.setuptools]
+packages = ["src", "src.cli", "src.services", "src.cli.providers"]
+package-dir = {"" = "."}
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
