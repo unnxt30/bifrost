@@ -1,6 +1,7 @@
 import click 
 from src.services.apple import AppleManager
 import json
+from src.services.spotify import SpotifyManager
 
 
 @click.group()
@@ -49,6 +50,29 @@ def track_info(url, output):
                 click.echo(f"  Preview URL: {track.get('previewUrl', 'N/A')}")
             else:
                 click.echo("No track information found")
-                
     except Exception as e:
         click.echo(f"Error: {str(e)}", err=True)
+
+@apple.command()
+@click.argument('url')
+def convert(url):
+    apple_manager = AppleManager(url)
+    apple_data = apple_manager.get_itunes_url()
+    if not apple_data:
+        click.echo("Failed to fetch track information", err=True)
+        return
+
+    results = apple_data.get('results', [])
+    spotify = SpotifyManager()
+    track = results[0]
+    track_name= track.get('trackName', 'N/A')
+    artist_name = track.get('artistName', 'N/A')
+    response = spotify.get_track_info("track", track_name, artist_name)
+
+    click.echo(response["tracks"]["items"][0]["external_urls"]["spotify"])
+
+
+
+    
+
+

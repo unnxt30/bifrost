@@ -12,7 +12,10 @@ def bifrost():
     pass
 
 
+
 bifrost.add_command(apple)
+
+
 
 
 # @spotify.command()
