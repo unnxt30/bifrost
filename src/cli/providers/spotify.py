@@ -1,5 +1,6 @@
 import click 
 from src.services.spotify import SpotifyManager
+from src.services.apple import AppleManager
 import json
 
 
@@ -16,14 +17,7 @@ def track_info(url, output):
     """Get track information from Spotify URL"""
     try:
         spotify_manager = SpotifyManager()
-        track_id = spotify_manager.extract_track_id(url)
-        if not track_id:
-            click.echo("Failed to extract track ID from URL", err=True)
-            return
-        
-        click.echo(f"Extracted track ID: {track_id}")
-        click.echo("Fetching track information...")
-        spotify_data = spotify_manager.get_spotify_track(track_id)
+        spotify_data = spotify_manager.get_spotify_track(url)
         
         if not spotify_data:
             click.echo("Failed to fetch track information", err=True)
@@ -43,3 +37,22 @@ def track_info(url, output):
 
     except Exception as e:
         click.echo(f"erro fetching spotify track info: {e}")
+@spotify.command()
+@click.argument('url')
+def convert(url):
+    spotify_manager = SpotifyManager()
+    apple_manager = AppleManager()
+
+    spotify_data = spotify_manager.get_spotify_track(url)
+
+    artist_name = spotify_data.get('artists', [{}])[0].get('name', 'N/A')
+    track_name = spotify_data.get('name', 'N/A')
+
+    apm_url = apple_manager.get_apple_music_url(track_name, artist_name)
+
+    if not apm_url:
+        click.echo("Could not find Apple Music URL", err=True)
+        return
+
+    click.echo(apm_url)
+    

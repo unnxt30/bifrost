@@ -1,8 +1,8 @@
 import httpx
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, urlencode
 
 class AppleManager:
-    def __init__(self, music_url):
+    def __init__(self, music_url=""):
         self.url = music_url
         self.track_id = None
 
@@ -40,3 +40,30 @@ class AppleManager:
         except Exception as e:
             print(f"Error getting iTunes data: {e}")
             return None
+        
+    def get_apple_music_url(self, trackName, artistName):
+        track_name = trackName.strip().lower()
+        artist_name = artistName.strip().lower()
+
+        term = f"{artist_name.replace(' ', '+')}+{track_name.replace(' ', '+')}"
+
+        # Manually construct the query string to preserve + characters
+        query_string = f"term={term}&media=music&entity=song&limit=1"
+        
+        base_url = "https://itunes.apple.com/search"
+        url = f"{base_url}?{query_string}"
+        try:
+            with httpx.Client() as client:
+                response = client.get(url)
+                if response.status_code == 200:
+                    res = response.json()
+                    if res.get('resultCount', 0) > 0:
+                        track_url = res.get('results', [])[0].get('trackViewUrl', None)
+                        if track_url:
+                            return track_url.strip('"') 
+                        return None
+                    return None
+        except Exception as e:
+            print(f"Error getting Apple Music URL: {e}")
+            return None
+        

@@ -94,10 +94,16 @@ class SpotifyManager:
             print(f"Error getting track info: {e}")
             return None
     
-    def get_spotify_track(self, track_id):
+    def get_spotify_track(self, url):
         if not self.is_token_valid():
             if not self._refresh_token():
                 return None
+            
+        track_id = self.extract_track_id(url)
+        if not track_id:
+            print("Failed to extract track ID from URL")
+            return None
+
         try:
             with httpx.Client() as client:
                 market = self._get_location()
@@ -118,6 +124,7 @@ class SpotifyManager:
             return None
 
     def extract_track_id(self, url) :
+
         try:
             parsed = urllib.parse.urlparse(url)
 
