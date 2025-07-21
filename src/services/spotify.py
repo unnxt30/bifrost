@@ -4,6 +4,7 @@ import time
 import urllib.parse
 from dotenv import load_dotenv
 import os
+from pathlib import Path
 
 load_dotenv()
 
@@ -13,7 +14,58 @@ class SpotifyManager:
         self.client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
         self.auth_token = None
         self.expiry = 0  
-        self._refresh_token()  
+        
+        # Try to load cached token first
+        cached_token, cached_expiry = self._load_cached_token()
+        if cached_token and time.time() < cached_expiry:
+            self.auth_token = cached_token
+            self.expiry = cached_expiry
+        else:
+            self._refresh_token()
+
+    def _get_cache_file_path(self):
+        """Get the path to the token cache file"""
+        cache_dir = Path.home() / '.bifrost'
+        cache_dir.mkdir(exist_ok=True)
+        return cache_dir / 'spotify_token.json'
+
+    def _load_cached_token(self):
+        """Load token from cache file if it exists and is valid"""
+        cache_file = self._get_cache_file_path()
+        try:
+            if cache_file.exists():
+                with open(cache_file, 'r') as f:
+                    data = json.load(f)
+                    token = data.get('access_token')
+                    expiry = data.get('expiry', 0)
+                    if token and time.time() < expiry:
+                        return token, expiry
+        except (json.JSONDecodeError, KeyError, OSError) as e:
+            print(f"Cache file corrupted, ignoring: {e}")
+        return None, 0
+
+    def _save_token_to_cache(self, token, expiry):
+        """Save token to cache file"""
+        cache_file = self._get_cache_file_path()
+        try:
+            cache_data = {
+                'access_token': token,
+                'expiry': expiry,
+                'cached_at': time.time()
+            }
+            with open(cache_file, 'w') as f:
+                json.dump(cache_data, f, indent=2)
+        except OSError as e:
+            print(f"Could not save token to cache: {e}")
+
+    def _clear_cached_token(self):
+        """Remove cached token file"""
+        cache_file = self._get_cache_file_path()
+        try:
+            if cache_file.exists():
+                cache_file.unlink()
+        except OSError as e:
+            print(f"Could not clear cache: {e}")
 
     def _refresh_token(self):
         url = "https://accounts.spotify.com/api/token"
@@ -33,13 +85,17 @@ class SpotifyManager:
             current_time = time.time()
             expires_in = res.get("expires_in", 3600)  # Default to 1 hour if missing
             self.expiry = current_time + expires_in - 60  # Buffer for safety
-            # Avoid printing in production; use logging instead
-            # print("Successfully obtained access token")
+            
+            # Save token to cache
+            self._save_token_to_cache(self.auth_token, self.expiry)
+            
             return True
         except (httpx.HTTPStatusError, httpx.RequestError, json.JSONDecodeError, ValueError) as e:
             print(f"Error refreshing token: {e}")
             self.auth_token = None
             self.expiry = 0
+            # Clear any stale cache
+            self._clear_cached_token()
             return False
         except Exception as e:
             print(f"Unexpected error: {e}")
