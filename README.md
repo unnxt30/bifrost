@@ -29,6 +29,11 @@
    make build
    ```
 
+4. **Activate Virtual Environment:**
+   ```bash
+   source .venv/bin/activate
+   ```
+
 ### Alternative Installation
 
 ## 🔧 Configuration
