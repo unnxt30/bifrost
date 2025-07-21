@@ -47,6 +47,20 @@ class SpotifyManager:
 
     def is_token_valid(self):
         return self.auth_token is not None and time.time() < self.expiry
+    
+    def _get_location(self):
+        try:
+            with httpx.Client() as client:
+                location_response = client.get("https://ipapi.co/json/")
+                location_data = location_response.json()
+                market = location_data.get("country_code", "IN")
+                if location_response.status_code != 200:
+                    print(f"Could not determine location, using default: {market}")
+                    return None 
+                return market
+        except Exception as e:
+            print(f"Error getting location: {e}")
+            return None
 
     def get_track_info(self, search_type, track_name, artist_name):
         if not self.is_token_valid():
@@ -55,11 +69,10 @@ class SpotifyManager:
 
         try:
             with httpx.Client() as client:
-                location_response = client.get("https://ipapi.co/json/")
-                location_data = location_response.json()
-                market = location_data.get("country_code", "IN")
-                if location_response.status_code != 200:
-                    print(f"Could not determine location, using default: {market}")
+                market = self._get_location()
+                if not market:
+                    print("Could not determine location, using default market")
+                    market = "IN"
 
                 base_url = "https://api.spotify.com/v1/search"
                 q_raw = f"track:{track_name} artist:{artist_name}" 
@@ -79,4 +92,49 @@ class SpotifyManager:
 
         except Exception as e:
             print(f"Error getting track info: {e}")
+            return None
+    
+    def get_spotify_track(self, track_id):
+        if not self.is_token_valid():
+            if not self._refresh_token():
+                return None
+        try:
+            with httpx.Client() as client:
+                market = self._get_location()
+                if not market:
+                    print("Could not determine location, using default market")
+                    market = "IN"
+                params = {
+                    'market': market
+                }
+                headers = {
+                    'Authorization': f'Bearer {self.auth_token}'
+                }
+                response = client.get(f"https://api.spotify.com/v1/tracks/{track_id}", headers=headers, params=params)
+                response.raise_for_status()
+                return response.json()
+        except Exception as e:
+            print(f"Error getting Spotify track: {e}")
+            return None
+
+    def extract_track_id(self, url) :
+        try:
+            parsed = urllib.parse.urlparse(url)
+
+            if parsed.netloc != 'open.spotify.com':
+                print("not a spotify URL")
+                return None
+            
+            path_parts = parsed.path.strip('/').split('/')
+
+            if len(path_parts) != 2 or path_parts[0] != 'track':
+                print("not a valid spotify track URL")
+                return None
+            
+            track_id = path_parts[1]
+
+
+            return track_id
+        except Exception as e:
+            print(f"Error extracting track ID: {e}")
             return None

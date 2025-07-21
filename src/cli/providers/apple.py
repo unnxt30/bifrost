@@ -36,7 +36,6 @@ def track_info(url, output):
         if output == 'json':
             click.echo(json.dumps(itunes_data, indent=2))
         else:
-            # Pretty print the track information
             results = itunes_data.get('results', [])
             if results:
                 track = results[0]
